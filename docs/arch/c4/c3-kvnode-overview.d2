@@ -1,0 +1,253 @@
+# C3 - Components: KVNode Overview
+# Parent: c2-containers.d2
+# Children: none
+# Related: none
+
+direction: right
+
+classes: {
+  handler: {
+    shape: rectangle
+    style: {
+      fill: "#85bbf0"
+      stroke: "#5d82a8"
+      font-color: "#000000"
+      border-radius: 4
+    }
+  }
+  service: {
+    shape: rectangle
+    style: {
+      fill: "#438dd5"
+      stroke: "#2e6295"
+      font-color: "#ffffff"
+      border-radius: 4
+    }
+  }
+  engine: {
+    shape: hexagon
+    style: {
+      fill: "#438dd5"
+      stroke: "#2e6295"
+      font-color: "#ffffff"
+    }
+  }
+  repository: {
+    shape: rectangle
+    style: {
+      fill: "#85bbf0"
+      stroke: "#5d82a8"
+      font-color: "#000000"
+      border-radius: 4
+    }
+  }
+  store: {
+    shape: rectangle
+    style: {
+      fill: "#85bbf0"
+      stroke: "#5d82a8"
+      font-color: "#000000"
+      border-radius: 4
+    }
+  }
+  client: {
+    shape: rectangle
+    style: {
+      fill: "#85bbf0"
+      stroke: "#5d82a8"
+      font-color: "#000000"
+      border-radius: 4
+    }
+  }
+  database-ext: {
+    shape: cylinder
+    style: {
+      fill: "#999999"
+      stroke: "#6b6b6b"
+      font-color: "#ffffff"
+    }
+  }
+  container-ext: {
+    shape: rectangle
+    style: {
+      fill: "#999999"
+      stroke: "#6b6b6b"
+      font-color: "#ffffff"
+      border-radius: 8
+    }
+  }
+  boundary-container: {
+    style: {
+      fill: "#ffffff"
+      stroke: "#2e6295"
+      stroke-dash: 3
+      border-radius: 8
+    }
+  }
+}
+
+# ============================================
+# CONTAINER BOUNDARY
+# ============================================
+kvnode: KVNode {
+  class: boundary-container
+
+  # --------------------------------------------
+  # Entry Points (Handlers)
+  # --------------------------------------------
+  tx-handler: TxHandler {
+    class: handler
+    tooltip: "[Handler]\nHTTP POST /tx\nSubmit transactions"
+  }
+
+  account-handler: AccountHandler {
+    class: handler
+    tooltip: "[Handler]\nHTTP GET /account/{addr}\nQuery account state"
+  }
+
+  gossip-handler: GossipHandler {
+    class: handler
+    tooltip: "[Handler]\nlibp2p GossipSub\nReceive gossiped TXs"
+  }
+
+  leadership-handler: LeadershipHandler {
+    class: handler
+    tooltip: "[Handler]\nConsensus events\nTrigger block building"
+  }
+
+  # --------------------------------------------
+  # Core Services (Use Cases)
+  # --------------------------------------------
+  tx-submit-svc: TxSubmitService {
+    class: service
+    tooltip: "[Service]\nValidate -> Mempool -> Gossip"
+  }
+
+  block-build-svc: BlockBuildService {
+    class: service
+    tooltip: "[Service]\nDrain mempool, build batch,\npropose block"
+  }
+
+  account-query-svc: AccountQueryService {
+    class: service
+    tooltip: "[Service]\nQuery account state"
+  }
+
+  # --------------------------------------------
+  # Processing Engines
+  # --------------------------------------------
+  validator: TxValidator {
+    class: engine
+    tooltip: "[Engine]\nSignature, nonce, dedup\nvalidation"
+  }
+
+  # --------------------------------------------
+  # In-Memory Stores
+  # --------------------------------------------
+  mempool: Pool {
+    class: store
+    tooltip: "[Store]\nIn-memory FIFO mempool\nPending transactions"
+  }
+
+  # --------------------------------------------
+  # Repositories / Data Access
+  # --------------------------------------------
+  account-store: TiKVAccountStore {
+    class: repository
+    tooltip: "[Repository]\nAccount persistence\nin TiKV"
+  }
+
+  committed-tx-store: TiKVCommittedTxStore {
+    class: repository
+    tooltip: "[Repository]\nCommitted TX hash lookup\nfor dedup"
+  }
+
+  # --------------------------------------------
+  # Gateways / External Clients
+  # --------------------------------------------
+  broadcaster: GossipSubBroadcaster {
+    class: client
+    tooltip: "[Client]\nBroadcast TXs via\nlibp2p GossipSub"
+  }
+
+  crypto: Ed25519Provider {
+    class: client
+    tooltip: "[Client]\nSign/verify signatures\nL1-agnostic crypto"
+  }
+
+  proposer: NodeProposer {
+    class: client
+    tooltip: "[Client]\nConsensusProposer impl\nWraps HotStuff Node"
+  }
+
+  # --------------------------------------------
+  # Existing Components (from scope 001)
+  # --------------------------------------------
+  node: Node {
+    class: engine
+    tooltip: "[Engine]\nHotStuff consensus\nBlock proposal"
+  }
+
+  executor: Executor {
+    class: engine
+    tooltip: "[Engine]\nApply committed blocks\nto state machine"
+  }
+
+  state-machine: StateMachine {
+    class: engine
+    tooltip: "[Engine]\nKV store operations\nTikV-backed"
+  }
+}
+
+# ============================================
+# EXTERNAL DEPENDENCIES
+# ============================================
+tikv: TiKV {
+  class: database-ext
+  tooltip: "Distributed KV storage"
+}
+
+peers: Peer Nodes {
+  class: container-ext
+  tooltip: "Other nodes in network"
+}
+
+# ============================================
+# DATA FLOW
+# ============================================
+# HTTP Entry -> Services
+kvnode.tx-handler -> kvnode.tx-submit-svc: "1. submit"
+kvnode.account-handler -> kvnode.account-query-svc: "1. query"
+kvnode.gossip-handler -> kvnode.tx-submit-svc: "1. receive"
+kvnode.leadership-handler -> kvnode.block-build-svc: "1. trigger"
+
+# TxSubmitService flow
+kvnode.tx-submit-svc -> kvnode.validator: "2. validate"
+kvnode.validator -> kvnode.crypto: "2a. verify sig"
+kvnode.validator -> kvnode.account-store: "2b. check nonce"
+kvnode.validator -> kvnode.mempool: "2c. mempool dedup"
+kvnode.validator -> kvnode.committed-tx-store: "2d. committed dedup"
+kvnode.tx-submit-svc -> kvnode.mempool: "3. add"
+kvnode.tx-submit-svc -> kvnode.broadcaster: "4. broadcast"
+
+# BlockBuildService flow
+kvnode.block-build-svc -> kvnode.mempool: "2. drain"
+kvnode.block-build-svc -> kvnode.proposer: "3. propose"
+kvnode.proposer -> kvnode.node: "delegate"
+
+# AccountQueryService flow
+kvnode.account-query-svc -> kvnode.account-store: "2. fetch"
+
+# Consensus flow
+kvnode.node -> kvnode.executor: "commit"
+kvnode.executor -> kvnode.state-machine: "apply TXs"
+kvnode.state-machine -> kvnode.account-store: "update nonce/balance"
+kvnode.executor -> kvnode.mempool: "remove committed"
+kvnode.executor -> kvnode.committed-tx-store: "record hashes"
+
+# External connections
+kvnode.account-store -> tikv: "persist/query"
+kvnode.committed-tx-store -> tikv: "persist/query"
+kvnode.state-machine -> tikv: "persist/query"
+kvnode.broadcaster -> peers: "gossip TXs"
+kvnode.node <-> peers: "consensus msgs"

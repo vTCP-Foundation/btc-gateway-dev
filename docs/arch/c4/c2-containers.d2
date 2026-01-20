@@ -1,0 +1,98 @@
+# C2 - Containers: BTC Gateway
+# Parent: c1-context.d2
+# Children: c3-kvnode-overview.d2
+
+direction: down
+
+classes: {
+  person: {
+    shape: person
+    style: {
+      fill: "#08427b"
+      stroke: "#052e56"
+      font-color: "#ffffff"
+    }
+  }
+  container: {
+    shape: rectangle
+    style: {
+      fill: "#438dd5"
+      stroke: "#2e6295"
+      font-color: "#ffffff"
+      border-radius: 8
+    }
+  }
+  container-ext: {
+    shape: rectangle
+    style: {
+      fill: "#999999"
+      stroke: "#6b6b6b"
+      font-color: "#ffffff"
+      border-radius: 8
+    }
+  }
+  database: {
+    shape: cylinder
+    style: {
+      fill: "#438dd5"
+      stroke: "#2e6295"
+      font-color: "#ffffff"
+    }
+  }
+  database-ext: {
+    shape: cylinder
+    style: {
+      fill: "#999999"
+      stroke: "#6b6b6b"
+      font-color: "#ffffff"
+    }
+  }
+  boundary-system: {
+    style: {
+      fill: "#ffffff"
+      stroke: "#0b4884"
+      stroke-dash: 5
+      border-radius: 8
+    }
+  }
+}
+
+# ============================================
+# EXTERNAL ACTORS
+# ============================================
+client: Client Application {
+  class: person
+  tooltip: "Submits transactions via REST API"
+}
+
+# ============================================
+# SYSTEM BOUNDARY
+# ============================================
+btc-gateway: BTC Gateway {
+  class: boundary-system
+
+  kvnode: KVNode {
+    class: container
+    tooltip: "[Go]\nMain application process:\nREST API, Consensus, Mempool,\nBlock Builder, TX Gossip"
+  }
+}
+
+# ============================================
+# EXTERNAL SYSTEMS
+# ============================================
+tikv: TiKV {
+  class: database-ext
+  tooltip: "[TiKV]\nDistributed KV storage\nfor accounts, state, transactions"
+}
+
+peer-nodes: Peer Nodes {
+  class: container-ext
+  tooltip: "Other KVNode instances\nin the consensus network"
+}
+
+# ============================================
+# RELATIONSHIPS
+# ============================================
+client -> btc-gateway.kvnode: "Submit TX / Query\n[HTTP REST]"
+btc-gateway.kvnode -> tikv: "Persist State\n[tikv-client-go]"
+btc-gateway.kvnode <-> peer-nodes: "Consensus + TX Gossip\n[libp2p GossipSub]"

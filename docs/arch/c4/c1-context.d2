@@ -1,0 +1,67 @@
+# C1 - System Context: BTC Gateway
+# Parent: none
+# Children: c2-containers.d2
+
+direction: right
+
+classes: {
+  person: {
+    shape: person
+    style: {
+      fill: "#08427b"
+      stroke: "#052e56"
+      font-color: "#ffffff"
+    }
+  }
+  system: {
+    shape: rectangle
+    style: {
+      fill: "#1168bd"
+      stroke: "#0b4884"
+      font-color: "#ffffff"
+      border-radius: 8
+    }
+  }
+  system-ext: {
+    shape: rectangle
+    style: {
+      fill: "#999999"
+      stroke: "#6b6b6b"
+      font-color: "#ffffff"
+      border-radius: 8
+    }
+  }
+}
+
+# ============================================
+# ACTORS
+# ============================================
+client: Client Application {
+  class: person
+  tooltip: "Submits transactions via REST API"
+}
+
+# ============================================
+# SYSTEMS
+# ============================================
+btc-gateway: BTC Gateway {
+  class: system
+  tooltip: "Distributed KV store with HotStuff consensus,\nmempool, and transaction gossip"
+}
+
+tikv: TiKV Cluster {
+  class: system-ext
+  tooltip: "Distributed key-value storage\nfor state persistence"
+}
+
+peer-nodes: Peer Nodes {
+  class: system-ext
+  tooltip: "Other BTC Gateway nodes\nin the consensus network"
+}
+
+# ============================================
+# RELATIONSHIPS
+# ============================================
+client -> btc-gateway: "Submit TX / Query State\n[REST API]"
+btc-gateway -> tikv: "Persist State\n[tikv-client]"
+btc-gateway <-> peer-nodes: "Consensus + TX Gossip\n[libp2p]"
