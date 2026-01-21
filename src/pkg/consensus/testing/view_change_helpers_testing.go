@@ -4,7 +4,9 @@ package testing
 
 import (
 	"fmt"
+	"time"
 
+	"btc-gateway/pkg/consensus/integration"
 	"btc-gateway/pkg/consensus/mocks"
 	"btc-gateway/pkg/consensus/types"
 )
@@ -55,4 +57,128 @@ func (h *ViewChangeTestHelpers) IsNodeBlocked(nodeID types.NodeID) bool {
 	}
 
 	return false
+}
+
+// =============================================================================
+// View Divergence Testing Helpers
+// =============================================================================
+
+// SetupDivergentViews sets each node to a different view number to simulate
+// the post-restart divergence scenario. Returns error if any node setup fails.
+func (h *ViewChangeTestHelpers) SetupDivergentViews(views []types.ViewNumber) error {
+	if len(views) != len(h.nodes) {
+		return fmt.Errorf("views slice length (%d) must match node count (%d)", len(views), len(h.nodes))
+	}
+
+	for nodeID, node := range h.nodes {
+		if int(nodeID) >= len(views) {
+			return fmt.Errorf("node ID %d exceeds views slice length", nodeID)
+		}
+		targetView := views[nodeID]
+
+		// Get coordinator and cast to testable interface
+		coordinator := node.GetCoordinator()
+		if testable, ok := interface{}(coordinator).(integration.CoordinatorTestable); ok {
+			testable.ForceSetView(targetView)
+		} else {
+			return fmt.Errorf("coordinator for node %d does not implement CoordinatorTestable", nodeID)
+		}
+	}
+
+	return nil
+}
+
+// ForceNodeToView sets a specific node's view number directly.
+func (h *ViewChangeTestHelpers) ForceNodeToView(nodeID types.NodeID, view types.ViewNumber) error {
+	node, exists := h.nodes[nodeID]
+	if !exists {
+		return NewNodeNotFoundError(nodeID)
+	}
+
+	coordinator := node.GetCoordinator()
+	if testable, ok := interface{}(coordinator).(integration.CoordinatorTestable); ok {
+		testable.ForceSetView(view)
+		return nil
+	}
+
+	return fmt.Errorf("coordinator for node %d does not implement CoordinatorTestable", nodeID)
+}
+
+// WaitForViewConvergence waits until all nodes reach the same view.
+// Returns true if convergence is achieved, false on timeout.
+func (h *ViewChangeTestHelpers) WaitForViewConvergence(maxWait time.Duration) bool {
+	return h.WaitForCondition(func() bool {
+		views := make(map[types.ViewNumber]int)
+		for _, node := range h.nodes {
+			views[node.GetCoordinator().GetCurrentView()]++
+		}
+		// Check if all nodes are at the same view
+		for _, count := range views {
+			if count == len(h.nodes) {
+				return true
+			}
+		}
+		return false
+	}, maxWait)
+}
+
+// WaitForQuorumAtView waits until at least quorum nodes are at or above a given view.
+func (h *ViewChangeTestHelpers) WaitForQuorumAtView(targetView types.ViewNumber, maxWait time.Duration) bool {
+	quorum := h.config.QuorumThreshold()
+	return h.WaitForCondition(func() bool {
+		count := 0
+		for _, node := range h.nodes {
+			if node.GetCoordinator().GetCurrentView() >= targetView {
+				count++
+			}
+		}
+		return count >= quorum
+	}, maxWait)
+}
+
+// GetMaxCurrentView returns the highest current view among all nodes.
+func (h *ViewChangeTestHelpers) GetMaxCurrentView() types.ViewNumber {
+	var maxView types.ViewNumber
+	for _, node := range h.nodes {
+		view := node.GetCoordinator().GetCurrentView()
+		if view > maxView {
+			maxView = view
+		}
+	}
+	return maxView
+}
+
+// GetNodeViews returns a map of node ID to current view for debugging.
+func (h *ViewChangeTestHelpers) GetNodeViews() map[types.NodeID]types.ViewNumber {
+	views := make(map[types.NodeID]types.ViewNumber)
+	for nodeID, node := range h.nodes {
+		views[nodeID] = node.GetCoordinator().GetCurrentView()
+	}
+	return views
+}
+
+// TriggerTimeoutsForAllNodes triggers view timeout on all nodes.
+// This is useful for forcing timeout message broadcasts.
+func (h *ViewChangeTestHelpers) TriggerTimeoutsForAllNodes() {
+	for _, node := range h.nodes {
+		coordinator := node.GetCoordinator()
+		if testable, ok := interface{}(coordinator).(integration.CoordinatorTestable); ok {
+			testable.TriggerViewTimeout()
+		}
+	}
+}
+
+// GetLockedQC returns the lockedQC for a specific node.
+func (h *ViewChangeTestHelpers) GetLockedQC(nodeID types.NodeID) *types.QuorumCertificate {
+	node, exists := h.nodes[nodeID]
+	if !exists {
+		return nil
+	}
+
+	coordinator := node.GetCoordinator()
+	if testable, ok := interface{}(coordinator).(integration.CoordinatorTestable); ok {
+		return testable.GetLockedQC()
+	}
+
+	return nil
 }

@@ -28,4 +28,19 @@ type CoordinatorTestable interface {
 		lockedQC *types.QuorumCertificate,
 		blocks map[types.BlockHash]*types.Block, // optional, can be nil
 	) error
+
+	// ForceSetView directly sets the coordinator's view number.
+	// This is simpler than ForceRecoverState for view divergence tests.
+	//
+	// UNSAFE: Bypasses normal view advancement protocol.
+	// Only available in test builds (//go:build consensus_testing).
+	ForceSetView(view types.ViewNumber)
+
+	// GetLockedQC returns the current lockedQC for testing assertions.
+	// Only available in test builds (//go:build consensus_testing).
+	GetLockedQC() *types.QuorumCertificate
+
+	// TriggerViewTimeout manually triggers a view timeout for testing.
+	// Only available in test builds (//go:build consensus_testing).
+	TriggerViewTimeout() error
 }

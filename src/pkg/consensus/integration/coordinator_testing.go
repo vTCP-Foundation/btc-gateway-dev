@@ -131,5 +131,58 @@ func (hc *HotStuffCoordinator) ForceRecoverState(
 	return nil
 }
 
+// ForceSetView directly sets the coordinator's view number for testing.
+// This is a simpler alternative to ForceRecoverState when you only need
+// to set up view divergence scenarios without full state recovery.
+//
+// UNSAFE: Bypasses normal view advancement protocol.
+// Only available in test builds (//go:build consensus_testing).
+func (hc *HotStuffCoordinator) ForceSetView(view types.ViewNumber) {
+	hc.mu.Lock()
+	defer hc.mu.Unlock()
+
+	oldView := hc.currentView
+	hc.currentView = view
+	hc.currentPhase = types.PhaseNone
+
+	// Sync engine view
+	for hc.consensus.GetCurrentView() < view {
+		hc.consensus.AdvanceView()
+	}
+
+	// Restart timer for new view
+	hc.stopViewTimer()
+	hc.startViewTimer()
+
+	fmt.Printf("   [Node %d] 🔧 ForceSetView: %d -> %d\n", hc.nodeID, oldView, view)
+}
+
+// GetLockedQC returns the current lockedQC for testing assertions.
+// Only available in test builds (//go:build consensus_testing).
+func (hc *HotStuffCoordinator) GetLockedQC() *types.QuorumCertificate {
+	hc.mu.RLock()
+	defer hc.mu.RUnlock()
+	return hc.consensus.GetLockedQC()
+}
+
+// TriggerViewTimeout manually triggers a view timeout for testing.
+// This broadcasts a timeout message as if the view timer expired.
+// Only available in test builds (//go:build consensus_testing).
+func (hc *HotStuffCoordinator) TriggerViewTimeout() error {
+	hc.mu.Lock()
+	defer hc.mu.Unlock()
+	hc.handleViewTimeoutLocked()
+	return nil
+}
+
+// InjectTimeoutMessage directly injects a timeout message for testing.
+// This bypasses network delivery to test timeout processing logic directly.
+// Only available in test builds (//go:build consensus_testing).
+func (hc *HotStuffCoordinator) InjectTimeoutMessage(msg *messages.TimeoutMsg) error {
+	hc.mu.Lock()
+	defer hc.mu.Unlock()
+	return hc.processTimeoutMessage(msg)
+}
+
 // Verify HotStuffCoordinator implements CoordinatorTestable at compile time
 var _ CoordinatorTestable = (*HotStuffCoordinator)(nil)

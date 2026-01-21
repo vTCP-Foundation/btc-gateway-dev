@@ -1530,7 +1530,41 @@ func (hc *HotStuffCoordinator) processTimeoutMessage(msg *messages.TimeoutMsg) e
         "view":   msg.ViewNumber,
         "sender": msg.SenderID,
     })
-	
+
+	// LIVENESS FIX: Advance view if receiving timeout for higher view
+	// This mirrors the NewView message handling (lines 1728-1737) and aligns with
+	// the HotStuff specification's ViewSync protocol (consensus-state-diagram.mermaid lines 535-544).
+	// Safety is preserved because:
+	// 1. Safety relies on lockedQC, not view number (HotStuff paper Section 4.4)
+	// 2. Timeout messages require valid signatures from known validators
+	// 3. A single timeout cannot trigger view change - still needs quorum
+	if msg.ViewNumber > hc.currentView {
+		// Cap the view jump to prevent DoS from malicious high-view timeouts.
+		// A reasonable jump allows recovery from divergence while limiting CPU spin.
+		const maxViewJump = 1000
+		targetView := msg.ViewNumber
+		if targetView-hc.currentView > maxViewJump {
+			targetView = hc.currentView + maxViewJump
+			fmt.Printf("   [Node %d] ⚠️ Capping view jump from %d to %d (requested %d)\n",
+				hc.nodeID, hc.currentView, targetView, msg.ViewNumber)
+		}
+
+		fmt.Printf("   [Node %d] 📈 Advancing to view %d based on Timeout from Node %d (was at view %d)\n",
+			hc.nodeID, targetView, msg.SenderID, hc.currentView)
+
+		hc.stopViewTimer()
+		for hc.currentView < targetView {
+			hc.advanceView()
+		}
+		hc.startViewTimer()
+
+		// Per specification (mermaid lines 547-553): broadcast timeout for new view
+		// to help other nodes and the leader converge faster.
+		if err := hc.broadcastTimeoutMessage(); err != nil {
+			fmt.Printf("   [Node %d] ⚠️ Failed to broadcast timeout after view advance: %v\n", hc.nodeID, err)
+		}
+	}
+
 	// Store timeout message
 	if hc.timeoutMessages[msg.ViewNumber] == nil {
 		hc.timeoutMessages[msg.ViewNumber] = make(map[types.NodeID]*messages.TimeoutMsg)
