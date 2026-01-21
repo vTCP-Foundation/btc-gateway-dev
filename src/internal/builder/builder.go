@@ -37,7 +37,9 @@ func (s *BlockBuildService) BuildAndPropose() (int, error) {
 	ctx := context.Background()
 
 	// Peek transactions from pool (don't remove yet)
-	txs := s.pool.Peek(MaxBlockSizeBytes)
+	// Reserve space for batch serialization overhead
+	effectiveLimit := MaxBlockSizeBytes - BatchOverheadBytes
+	txs := s.pool.Peek(effectiveLimit)
 
 	// Order transactions for valid application:
 	// - Group by sender

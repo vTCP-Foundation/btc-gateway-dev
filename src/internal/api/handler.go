@@ -441,7 +441,12 @@ func (h *Handler) handleGetAccount(w http.ResponseWriter, r *http.Request) {
 
 	acc, err := h.accountQueryService.GetAccount(ctx, address)
 	if err != nil {
-		h.writeError(w, http.StatusInternalServerError, "failed to get account: "+err.Error())
+		// Check for invalid address (400) vs store error (503)
+		if err == service.ErrInvalidAddress {
+			h.writeError(w, http.StatusBadRequest, "invalid address format")
+			return
+		}
+		h.writeError(w, http.StatusServiceUnavailable, "failed to get account: "+err.Error())
 		return
 	}
 

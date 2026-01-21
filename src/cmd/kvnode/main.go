@@ -358,7 +358,7 @@ func run(ctx context.Context, cfg *inttypes.Config) error {
 	log.Info().Msg("Initialized block builder")
 
 	// 14. Create AccountQueryService
-	accountQueryService := service.NewAccountQueryService(accountStore)
+	accountQueryService := service.NewAccountQueryService(accountStore, cryptoProvider)
 
 	// Determine API port
 	apiPortToUse := *apiPort
