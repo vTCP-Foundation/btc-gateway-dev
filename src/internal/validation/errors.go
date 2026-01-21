@@ -3,6 +3,9 @@ package validation
 import "errors"
 
 var (
+	// ErrNilTransaction indicates a nil transaction was provided.
+	ErrNilTransaction = errors.New("transaction is nil")
+
 	// ErrInvalidSignature indicates the transaction signature is invalid.
 	ErrInvalidSignature = errors.New("invalid transaction signature")
 

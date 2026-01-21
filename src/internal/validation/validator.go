@@ -41,6 +41,11 @@ func NewTxValidator(
 // 4. Check not already committed (replay)
 // 5. Check for duplicate (sender, nonce) in mempool - gaps are allowed
 func (v *TxValidator) Validate(ctx context.Context, tx *statemachine.Transaction) error {
+	// Nil guard
+	if tx == nil {
+		return ErrNilTransaction
+	}
+
 	// 0. Basic sanity checks
 	if err := tx.Validate(); err != nil {
 		return err
