@@ -1,0 +1,279 @@
+version: '3.8'
+
+# This docker-compose file sets up a 5-node HotStuff KV store cluster
+# Each node has its own isolated TikV instance (PD + TiKV)
+
+services:
+  # ============================================================================
+  # TikV Instances (one per node)
+  # ============================================================================
+
+  # Node 0 TikV
+  pd0:
+    image: pingcap/pd:latest
+    container_name: pd0
+    ports:
+      - "2379:2379"
+    command:
+      - --name=pd0
+      - --client-urls=http://0.0.0.0:2379
+      - --peer-urls=http://0.0.0.0:2380
+      - --advertise-client-urls=http://pd0:2379
+      - --advertise-peer-urls=http://pd0:2380
+      - --data-dir=/data/pd0
+    volumes:
+      - pd0_data:/data/pd0
+    networks:
+      - kvstore
+
+  tikv0:
+    image: pingcap/tikv:latest
+    container_name: tikv0
+    depends_on:
+      - pd0
+    command:
+      - --addr=0.0.0.0:20160
+      - --advertise-addr=tikv0:20160
+      - --data-dir=/data/tikv0
+      - --pd=pd0:2379
+    volumes:
+      - tikv0_data:/data/tikv0
+    networks:
+      - kvstore
+
+  # Node 1 TikV
+  pd1:
+    image: pingcap/pd:latest
+    container_name: pd1
+    ports:
+      - "2380:2379"
+    command:
+      - --name=pd1
+      - --client-urls=http://0.0.0.0:2379
+      - --peer-urls=http://0.0.0.0:2380
+      - --advertise-client-urls=http://pd1:2379
+      - --advertise-peer-urls=http://pd1:2380
+      - --data-dir=/data/pd1
+    volumes:
+      - pd1_data:/data/pd1
+    networks:
+      - kvstore
+
+  tikv1:
+    image: pingcap/tikv:latest
+    container_name: tikv1
+    depends_on:
+      - pd1
+    command:
+      - --addr=0.0.0.0:20160
+      - --advertise-addr=tikv1:20160
+      - --data-dir=/data/tikv1
+      - --pd=pd1:2379
+    volumes:
+      - tikv1_data:/data/tikv1
+    networks:
+      - kvstore
+
+  # Node 2 TikV
+  pd2:
+    image: pingcap/pd:latest
+    container_name: pd2
+    ports:
+      - "2381:2379"
+    command:
+      - --name=pd2
+      - --client-urls=http://0.0.0.0:2379
+      - --peer-urls=http://0.0.0.0:2380
+      - --advertise-client-urls=http://pd2:2379
+      - --advertise-peer-urls=http://pd2:2380
+      - --data-dir=/data/pd2
+    volumes:
+      - pd2_data:/data/pd2
+    networks:
+      - kvstore
+
+  tikv2:
+    image: pingcap/tikv:latest
+    container_name: tikv2
+    depends_on:
+      - pd2
+    command:
+      - --addr=0.0.0.0:20160
+      - --advertise-addr=tikv2:20160
+      - --data-dir=/data/tikv2
+      - --pd=pd2:2379
+    volumes:
+      - tikv2_data:/data/tikv2
+    networks:
+      - kvstore
+
+  # Node 3 TikV
+  pd3:
+    image: pingcap/pd:latest
+    container_name: pd3
+    ports:
+      - "2382:2379"
+    command:
+      - --name=pd3
+      - --client-urls=http://0.0.0.0:2379
+      - --peer-urls=http://0.0.0.0:2380
+      - --advertise-client-urls=http://pd3:2379
+      - --advertise-peer-urls=http://pd3:2380
+      - --data-dir=/data/pd3
+    volumes:
+      - pd3_data:/data/pd3
+    networks:
+      - kvstore
+
+  tikv3:
+    image: pingcap/tikv:latest
+    container_name: tikv3
+    depends_on:
+      - pd3
+    command:
+      - --addr=0.0.0.0:20160
+      - --advertise-addr=tikv3:20160
+      - --data-dir=/data/tikv3
+      - --pd=pd3:2379
+    volumes:
+      - tikv3_data:/data/tikv3
+    networks:
+      - kvstore
+
+  # Node 4 TikV
+  pd4:
+    image: pingcap/pd:latest
+    container_name: pd4
+    ports:
+      - "2383:2379"
+    command:
+      - --name=pd4
+      - --client-urls=http://0.0.0.0:2379
+      - --peer-urls=http://0.0.0.0:2380
+      - --advertise-client-urls=http://pd4:2379
+      - --advertise-peer-urls=http://pd4:2380
+      - --data-dir=/data/pd4
+    volumes:
+      - pd4_data:/data/pd4
+    networks:
+      - kvstore
+
+  tikv4:
+    image: pingcap/tikv:latest
+    container_name: tikv4
+    depends_on:
+      - pd4
+    command:
+      - --addr=0.0.0.0:20160
+      - --advertise-addr=tikv4:20160
+      - --data-dir=/data/tikv4
+      - --pd=pd4:2379
+    volumes:
+      - tikv4_data:/data/tikv4
+    networks:
+      - kvstore
+
+  # ============================================================================
+  # KV Store Nodes
+  # ============================================================================
+
+  kvnode0:
+    build: .
+    container_name: kvnode0
+    depends_on:
+      - tikv0
+    ports:
+      - "8080:8080"   # REST API
+      - "4000:4000"   # libp2p
+    command:
+      - --config=/config/node0.yaml
+      - --api-port=8080
+    volumes:
+      - ./configs:/config:ro
+    networks:
+      - kvstore
+    restart: unless-stopped
+
+  kvnode1:
+    build: .
+    container_name: kvnode1
+    depends_on:
+      - tikv1
+    ports:
+      - "8081:8080"
+      - "4001:4000"
+    command:
+      - --config=/config/node1.yaml
+      - --api-port=8080
+    volumes:
+      - ./configs:/config:ro
+    networks:
+      - kvstore
+    restart: unless-stopped
+
+  kvnode2:
+    build: .
+    container_name: kvnode2
+    depends_on:
+      - tikv2
+    ports:
+      - "8082:8080"
+      - "4002:4000"
+    command:
+      - --config=/config/node2.yaml
+      - --api-port=8080
+    volumes:
+      - ./configs:/config:ro
+    networks:
+      - kvstore
+    restart: unless-stopped
+
+  kvnode3:
+    build: .
+    container_name: kvnode3
+    depends_on:
+      - tikv3
+    ports:
+      - "8083:8080"
+      - "4003:4000"
+    command:
+      - --config=/config/node3.yaml
+      - --api-port=8080
+    volumes:
+      - ./configs:/config:ro
+    networks:
+      - kvstore
+    restart: unless-stopped
+
+  kvnode4:
+    build: .
+    container_name: kvnode4
+    depends_on:
+      - tikv4
+    ports:
+      - "8084:8080"
+      - "4004:4000"
+    command:
+      - --config=/config/node4.yaml
+      - --api-port=8080
+    volumes:
+      - ./configs:/config:ro
+    networks:
+      - kvstore
+    restart: unless-stopped
+
+networks:
+  kvstore:
+    driver: bridge
+
+volumes:
+  pd0_data:
+  pd1_data:
+  pd2_data:
+  pd3_data:
+  pd4_data:
+  tikv0_data:
+  tikv1_data:
+  tikv2_data:
+  tikv3_data:
+  tikv4_data:

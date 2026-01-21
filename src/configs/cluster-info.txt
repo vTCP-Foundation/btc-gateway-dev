@@ -1,0 +1,28 @@
+Cluster Information
+==================
+
+Node 0:
+  Peer ID:    12D3KooWGph8CNzJrBZumGHe3wukJ1rXBs7cgpLsLSeLCRy7cNM6
+  Address:    /dns4/kvnode0/tcp/4000
+  Public Key: aBc+ADh4j8dbNoEgb+MAXk9uYNb4PmoNgYKSiieUz9k=
+
+Node 1:
+  Peer ID:    12D3KooWG9ZyvsiobYgQ3FZSTLvKygLY2dzKTMfLMFcXJDYu7iue
+  Address:    /dns4/kvnode1/tcp/4000
+  Public Key: XhGDuPjRWAk2eZABrIulLFx76sEptuYoYhCWbMEfWsE=
+
+Node 2:
+  Peer ID:    12D3KooWK6Jtd21ZEq76owEH3z4jY9aMvH3sNUxftA29tKa2Pi2s
+  Address:    /dns4/kvnode2/tcp/4000
+  Public Key: ic7E1Cqs55+aaDzISXzEDauSWZKcTYGePTHpNlM7F1A=
+
+Node 3:
+  Peer ID:    12D3KooWKHh79kHLkth7gemg4rmaPvBnNUoqA9cbR6d9GK2L1We6
+  Address:    /dns4/kvnode3/tcp/4000
+  Public Key: jLlHCtBAwsKwIm9KYCO1kqyyG+tacdJmruchoypT5Us=
+
+Node 4:
+  Peer ID:    12D3KooWAFyRmhrxHyNr1AaWbdhrSjmXYpQJ4ptqM17HDqniq9KC
+  Address:    /dns4/kvnode4/tcp/4000
+  Public Key: Bo9jRzZ0gb532Sf8KEtT+EjT2VsQUrmhTBnqbof0z28=
+

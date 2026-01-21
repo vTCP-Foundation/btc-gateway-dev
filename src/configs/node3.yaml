@@ -1,0 +1,35 @@
+node:
+    id: 3
+    private_key: nj/0gfxPXydfaoBgh8dXooR78pJN9CQOqqbC4RS+UqGMuUcK0EDCwrAib0pgI7WSrLIb61px0mau5yGjKlPlSw==
+network:
+    addresses:
+        - /ip4/0.0.0.0/tcp/4000
+peers:
+    connection_timeout: 10s
+logging:
+    level: debug
+    format: text
+consensus:
+    view_timeout: 5s
+    max_block_size: 134217728
+    proposal_timeout: 2s
+validators:
+    - id: 0
+      public_key: aBc+ADh4j8dbNoEgb+MAXk9uYNb4PmoNgYKSiieUz9k=
+      address: /dns4/kvnode0/tcp/4000
+    - id: 1
+      public_key: XhGDuPjRWAk2eZABrIulLFx76sEptuYoYhCWbMEfWsE=
+      address: /dns4/kvnode1/tcp/4000
+    - id: 2
+      public_key: ic7E1Cqs55+aaDzISXzEDauSWZKcTYGePTHpNlM7F1A=
+      address: /dns4/kvnode2/tcp/4000
+    - id: 3
+      public_key: jLlHCtBAwsKwIm9KYCO1kqyyG+tacdJmruchoypT5Us=
+      address: /dns4/kvnode3/tcp/4000
+    - id: 4
+      public_key: Bo9jRzZ0gb532Sf8KEtT+EjT2VsQUrmhTBnqbof0z28=
+      address: /dns4/kvnode4/tcp/4000
+storage:
+    pd_addrs:
+        - pd3:2379
+    key_prefix: 'kvstore:node3:'
